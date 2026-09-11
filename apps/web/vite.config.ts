@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 
 const backendPort = process.env.VITE_BACKEND_PORT ?? "8000";
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
-const allowedHosts = [".pod.compshare.cn"];
+const allowedHosts = [".pod.compshare.cn", "talk.fengrui.tech"];
 const apiProxy = {
   target: `http://127.0.0.1:${backendPort}`,
   changeOrigin: true,

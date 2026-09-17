@@ -9,7 +9,7 @@
 |------|---------|----------|----------|------|
 | `mock` | `mock` | 首次运行、CI、排查 API/WebRTC | 已内置，已验证 | [Mock](../../avatar_models/mock.md) |
 | `wav2lip` | `local` / `omnirt` | 第一个真实唇形模型 | local adapter 已内置；OmniRT 路径已验证 | [Local](../wav2lip/local.md) / [OmniRT](../wav2lip/omnirt.md) |
-| `musetalk` | `local` / `omnirt` / `direct_ws` | 使用进程内启动或外部服务获得 MuseTalk 质量 | local adapter 已内置；OmniRT/direct_ws 路径已文档化 | [Local](../musetalk/local.md) / [OmniRT](../musetalk/omnirt.md) |
+| `musetalk` | `local` / `omnirt` / `direct_ws` | 使用进程内启动或外部服务获得 MuseTalk 质量 | local adapter 已内置；OmniRT/direct_ws 路径已文档化 | [Local](../musetalk/local.md) / [OmniRT](../musetalk/omnirt.md) / [安装踩坑](../musetalk/install-pitfalls.md) |
 | `quicktalk` | `local` / `omnirt` | 本地实时 adapter 或 OmniRT 服务化部署 | local 已内置；OmniRT 路径已接入 | [Local](../quicktalk/local.md) / [OmniRT](../quicktalk/omnirt.md) |
 | `fasterliveportrait` | `omnirt` | 单卡实时音频驱动头像并贴回原始资产图 | 已文档化 | [FasterLivePortrait](../../avatar_models/fasterliveportrait.md) |
 | `flashtalk` | `omnirt` | 高质量私有化、GPU/NPU 重模型 | OmniRT/Ascend 路径已验证 | [FlashTalk](../../avatar_models/flashtalk.md) |

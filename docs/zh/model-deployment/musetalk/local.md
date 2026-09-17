@@ -2,6 +2,8 @@
 
 适用：你希望 OpenTalking 在本进程内加载 MuseTalk local adapter，并在创建会话前自动运行 MuseTalk 官方头像预处理。这个模式便于单机验证，但依赖比 Wav2Lip / QuickTalk 更重。
 
+> **RTX 5090 / 国内网络 / 依赖被搞坏？** 先看实战踩坑：[install-pitfalls.md](./install-pitfalls.md)。
+
 ## 1. 准备 OpenTalking 环境
 
 ```bash title="终端"

@@ -248,7 +248,7 @@ bash scripts/start_unified.sh \
 | --- | --- | --- | --- | --- | --- |
 | `quicktalk` | RTX 3090 | template video + audio | 720x900 / 25fps | 约 3.8 GiB | 约 35 fps |
 
-更多权重下载、Docker、故障排查和模型配置见 [模型部署索引](https://datascale-ai.github.io/opentalking/latest/model-deployment/)。
+更多权重下载、Docker、故障排查和模型配置见 [模型部署索引](https://datascale-ai.github.io/opentalking/latest/model-deployment/)。MuseTalk 实战踩坑见 [install-pitfalls.md](docs/zh/model-deployment/musetalk/install-pitfalls.md)。
 
 ### 云端模型 API：Atlas Cloud
 
@@ -325,6 +325,7 @@ OpenTalking 的 LLM 走 OpenAI-compatible 接口，把 `OPENTALKING_LLM_BASE_URL
 
 - [快速开始](https://datascale-ai.github.io/opentalking/latest/quick-start/)
 - [模型](https://datascale-ai.github.io/opentalking/latest/model-deployment/)（权重下载、国内源、启动、验证）
+- [MuseTalk Local 安装踩坑实录](docs/zh/model-deployment/musetalk/install-pitfalls.md)（RTX 5090 / 国内网络 / onnxruntime / LiveTalking prepared 旁路）
 - [架构说明](https://datascale-ai.github.io/opentalking/latest/developer-guide/architecture/)
 - [配置说明](https://datascale-ai.github.io/opentalking/latest/reference/configuration/)
 - [部署文档](https://datascale-ai.github.io/opentalking/latest/deployment/)（Docker Compose、分布式部署）

@@ -38,5 +38,6 @@ MuseTalk 是面向更高质量口型生成的视频 avatar 路径。相比 Wav2L
 ## 相关页面
 
 - [Support Matrix](../deployment/support-matrix.md)
+- [MuseTalk Local 安装踩坑实录](../model-deployment/musetalk/install-pitfalls.md)
 - [Avatar Assets](avatar.md)
 - [Talking-head Model Deployment](index.md)

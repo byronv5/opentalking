@@ -248,7 +248,7 @@ More entrypoints:
 | --- | --- | --- | --- | --- | --- |
 | `quicktalk` | RTX 3090 | Template video + audio | 720x900 / 25fps | About 3.8 GiB | About 35 fps |
 
-For weight downloads, Docker, troubleshooting, and model configuration, see [Model deployment](https://datascale-ai.github.io/opentalking/latest/en/model-deployment/).
+For weight downloads, Docker, troubleshooting, and model configuration, see [Model deployment](https://datascale-ai.github.io/opentalking/latest/en/model-deployment/). MuseTalk local install pitfalls (Chinese): [install-pitfalls.md](docs/zh/model-deployment/musetalk/install-pitfalls.md).
 
 ### Cloud Model API: Atlas Cloud
 
@@ -327,6 +327,7 @@ OpenTalking uses an OpenAI-compatible interface for LLMs. Point `OPENTALKING_LLM
 
 - [Quickstart](https://datascale-ai.github.io/opentalking/latest/en/quick-start/)
 - [Models](https://datascale-ai.github.io/opentalking/latest/en/model-deployment/) (weight downloads, mirrors, startup, validation)
+- [MuseTalk local install pitfalls (Chinese)](docs/zh/model-deployment/musetalk/install-pitfalls.md) (RTX 5090, China mirrors, onnxruntime breakage, LiveTalking prepared assets)
 - [Architecture](https://datascale-ai.github.io/opentalking/latest/en/developer-guide/architecture/)
 - [Configuration](https://datascale-ai.github.io/opentalking/latest/en/reference/configuration/)
 - [Deployment](https://datascale-ai.github.io/opentalking/latest/en/deployment/) (Docker Compose, distributed deployment)

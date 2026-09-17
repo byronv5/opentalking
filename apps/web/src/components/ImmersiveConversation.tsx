@@ -68,13 +68,14 @@ export function ImmersiveConversation({
   const live = connection === "live" || connection === "expiring";
 
   return (
-    <main className="relative h-dvh min-h-0 overflow-hidden bg-slate-950 text-white">
+    <main className="fixed inset-0 z-40 min-h-0 overflow-hidden bg-slate-950 text-white">
       <SceneStage
         videoRef={videoRef}
         videoStream={videoStream}
         scene={scene}
         backgrounds={backgrounds}
         subtitle={subtitle}
+        immersiveFill
         className="h-full w-full"
       >
         <div className="absolute right-0 top-0 z-30 flex h-24 w-48 items-start justify-end p-4">

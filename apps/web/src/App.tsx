@@ -3041,7 +3041,7 @@ export default function App() {
       <div
         className={
           immersiveActive
-            ? "relative flex h-dvh min-h-0 flex-col bg-slate-950"
+            ? "fixed inset-0 z-40 flex min-h-0 flex-col bg-slate-950"
             : "flex min-h-0 flex-col lg:h-[calc(100vh-3.5rem)] lg:flex-row"
         }
       >
@@ -3122,7 +3122,7 @@ export default function App() {
             <div
               className={
                 immersiveActive
-                  ? "absolute inset-x-0 top-0 bottom-12 overflow-hidden bg-black sm:bottom-14"
+                  ? "absolute inset-0 overflow-hidden bg-black"
                   : "relative min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 lg:min-h-[420px]"
               }
             >
@@ -3135,6 +3135,7 @@ export default function App() {
                 avatarMaskUrl={showStart ? null : selectedAvatarMaskUrl}
                 avatarAdjust={immersiveActive ? immersiveAvatarAdjust : undefined}
                 compactSquareStage={compactSquareStage}
+                immersiveFill={immersiveActive}
                 clientRenderer={!showStart && model === "mock" ? currentAvatar?.client_renderer ?? null : null}
                 className="h-full w-full"
               >

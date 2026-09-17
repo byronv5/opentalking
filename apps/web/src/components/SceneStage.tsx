@@ -19,6 +19,8 @@ type SceneStageProps = {
   children?: ReactNode;
   className?: string;
   compactSquareStage?: boolean;
+  /** Immersive/kiosk: edge-to-edge cover fill (no stage padding). */
+  immersiveFill?: boolean;
   clientRenderer?: ClientRendererDescriptor | null;
 };
 
@@ -58,6 +60,7 @@ export function SceneStage({
   children,
   className = "",
   compactSquareStage = false,
+  immersiveFill = false,
   clientRenderer = null,
 }: SceneStageProps) {
   const [rendererFailed, setRendererFailed] = useState(false);
@@ -67,12 +70,13 @@ export function SceneStage({
     ? backgrounds.find((item) => item.id === scene.background_id) ?? null
     : null;
   const subtitleStyle = scene?.subtitle_style ?? "lower-third";
-  const avatarFit = scene?.avatar_fit === "cover" ? "object-cover" : "object-contain";
-  const avatarAnchor = scene?.avatar_anchor ?? "center";
+  const preferCover = immersiveFill || scene?.avatar_fit === "cover";
+  const avatarFit = preferCover ? "object-cover" : "object-contain";
+  const avatarAnchor = immersiveFill ? "center" : (scene?.avatar_anchor ?? "center");
   const avatarAnchorClass = AVATAR_ANCHOR_CLASSES[avatarAnchor as keyof typeof AVATAR_ANCHOR_CLASSES] ?? AVATAR_ANCHOR_CLASSES.center;
   const avatarObjectPosition = AVATAR_ANCHOR_OBJECT_POSITIONS[avatarAnchor as keyof typeof AVATAR_ANCHOR_OBJECT_POSITIONS] ?? AVATAR_ANCHOR_OBJECT_POSITIONS.center;
   const avatarTransformOrigin = AVATAR_ANCHOR_TRANSFORM_ORIGINS[avatarAnchor as keyof typeof AVATAR_ANCHOR_TRANSFORM_ORIGINS] ?? AVATAR_ANCHOR_TRANSFORM_ORIGINS.center;
-  const avatarMaskSize = scene?.avatar_fit === "cover" ? "cover" : "contain";
+  const avatarMaskSize = preferCover ? "cover" : "contain";
   const avatarMaskPosition = avatarAnchor === "bottom"
     ? "center bottom"
     : avatarAnchor === "left"
@@ -81,7 +85,9 @@ export function SceneStage({
         ? "right center"
         : "center";
   const hasSceneBackground = Boolean(scene);
-  const backgroundColor = scene?.background_color || "#ffffff";
+  const backgroundColor = immersiveFill
+    ? (scene?.background_color || "#000000")
+    : (scene?.background_color || "#ffffff");
   const sceneAvatarScale = scene?.avatar_scale ?? 1;
   const avatarDisplayScale = sceneAvatarScale * (avatarAdjust?.scale ?? 1);
   const avatarTransform = avatarAdjust
@@ -102,7 +108,7 @@ export function SceneStage({
     : undefined;
 
   return (
-    <div className={`relative min-h-0 overflow-hidden ${hasSceneBackground ? "bg-slate-950" : "bg-white"} ${className}`}>
+    <div className={`relative min-h-0 overflow-hidden ${hasSceneBackground || immersiveFill ? "bg-slate-950" : "bg-white"} ${className}`}>
       <div className="scene-background-layer absolute inset-0" style={{ backgroundColor }}>
         {background?.kind === "image" ? (
           <img src={backgroundUrl(background)} alt={background.name} className="h-full w-full object-cover" />
@@ -113,10 +119,10 @@ export function SceneStage({
         {hasSceneBackground ? <div className="absolute inset-0 bg-slate-950/10" /> : null}
       </div>
 
-      <div className={`absolute inset-0 flex p-4 sm:p-6 lg:p-8 ${avatarAnchorClass}`}>
+      <div className={`absolute inset-0 flex ${immersiveFill ? "p-0" : "p-4 sm:p-6 lg:p-8"} ${avatarAnchorClass}`}>
         <div
           className={
-            compactSquareStage
+            compactSquareStage && !immersiveFill
               ? "relative aspect-square w-full max-w-[42rem] max-h-full"
               : "relative h-full w-full"
           }

@@ -10,3 +10,5 @@ energy_max_step_down: 0.06
 eye_align: false
 prepared_compose: ""
 prebuffer_chunks: 3
+prediction_smooth: 0.45
+freeze_speaking: false

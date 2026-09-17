@@ -71,6 +71,8 @@ _ENV_OVERRIDES: dict[str, dict[str, tuple[str, ...]]] = {
         "eye_align": ("OPENTALKING_MUSETALK_EYE_ALIGN",),
         "prepared_compose": ("OPENTALKING_MUSETALK_PREPARED_COMPOSE",),
         "prebuffer_chunks": ("OPENTALKING_MUSETALK_PREBUFFER_CHUNKS",),
+        "prediction_smooth": ("OPENTALKING_MUSETALK_PREDICTION_SMOOTH",),
+        "freeze_speaking": ("OPENTALKING_MUSETALK_FREEZE_SPEAKING",),
     },
     "flashtalk": {
         "frame_num": ("OPENTALKING_FLASHTALK_FRAME_NUM", "FLASHTALK_FRAME_NUM"),

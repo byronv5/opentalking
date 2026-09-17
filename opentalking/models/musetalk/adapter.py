@@ -106,6 +106,8 @@ class MuseTalkAdapter:
         self._energy_release = float(config["energy_release"])
         self._energy_max_step_up = float(config["energy_max_step_up"])
         self._energy_max_step_down = float(config["energy_max_step_down"])
+        self._prediction_smooth = float(np.clip(float(config.get("prediction_smooth", 0.0)), 0.0, 0.95))
+        self._freeze_speaking = bool(config.get("freeze_speaking", False))
 
     @staticmethod
     def runtime_available() -> bool:
@@ -286,9 +288,17 @@ class MuseTalkAdapter:
             state.frames,
         )
         state.extra["preview_frame_index"] = 0
-        state.extra["freeze_speaking_to_preview"] = bool(
-            metadata.get("freeze_speaking_to_preview", False)
-        )
+        freeze_meta = metadata.get("freeze_speaking_to_preview")
+        if freeze_meta is None:
+            freeze_speaking = self._freeze_speaking
+        else:
+            freeze_speaking = bool(freeze_meta)
+        # Speaking should keep cycling prepared full_imgs (LiveTalking-style).
+        # Freeze is only for explicit opt-in when body motion must be disabled.
+        state.extra["freeze_speaking_to_preview"] = freeze_speaking
+        if freeze_speaking and state.frames:
+            state.extra["preview_frame"] = state.frames[0].copy()
+            state.extra["preview_frame_index"] = 0
         animation = metadata.get("animation")
         if isinstance(animation, dict):
             state.extra["musetalk_animation_metadata"] = animation
@@ -302,6 +312,8 @@ class MuseTalkAdapter:
             state.extra["prediction_overlap_tail"] = []
             state.extra["audio_total_samples"] = 0
             state.extra["musetalk_prev_energy"] = 0.0
+            state.extra["prediction_smooth_prev"] = None
+            state.extra["composed_smooth_prev"] = None
             state.extra["closed_prediction_cache"] = {}
 
         return state
@@ -543,6 +555,10 @@ class MuseTalkAdapter:
             audio_features=audio_feat,
             device=device,
         )
+        if frame_index_start == 0:
+            avatar_state.extra["prediction_smooth_prev"] = None
+            avatar_state.extra["composed_smooth_prev"] = None
+        results = self._smooth_prediction_sequence(avatar_state, results)
 
         frame_energy = features.frame_energy
         gate_energy = (
@@ -638,6 +654,35 @@ class MuseTalkAdapter:
 
         return results
 
+    def _smooth_prediction_sequence(
+        self,
+        avatar_state: FrameAvatarState,
+        predictions: list[Any],
+    ) -> list[Any]:
+        """EMA-smooth consecutive face crops to reduce chunk-boundary lip jitter."""
+        alpha = self._prediction_smooth
+        if alpha <= 1e-6:
+            return predictions
+
+        prev = avatar_state.extra.get("prediction_smooth_prev")
+        smoothed: list[Any] = []
+        for pred in predictions:
+            if not isinstance(pred, np.ndarray) or pred.ndim != 3:
+                smoothed.append(pred)
+                continue
+            if (
+                isinstance(prev, np.ndarray)
+                and prev.shape == pred.shape
+            ):
+                blended = prev.astype(np.float32) * alpha + pred.astype(np.float32) * (
+                    1.0 - alpha
+                )
+                pred = np.clip(blended, 0.0, 255.0).astype(np.uint8)
+            prev = pred
+            smoothed.append(pred)
+        avatar_state.extra["prediction_smooth_prev"] = prev
+        return smoothed
+
     def compose_frame(
         self,
         avatar_state: Any,
@@ -652,7 +697,94 @@ class MuseTalkAdapter:
                 closed_prediction=prediction.closed_prediction,
                 amount=prediction.amount,
             )
-        return compose_simple(state, frame_idx, prediction, timestamp_ms=ts)
+        frame = compose_simple(state, frame_idx, prediction, timestamp_ms=ts)
+        return self._smooth_composed_mouth_region(state, frame, frame_idx)
+
+    def _smooth_composed_mouth_region(
+        self,
+        state: FrameAvatarState,
+        frame: VideoFrameData,
+        frame_idx: int,
+    ) -> VideoFrameData:
+        """Temporally smooth only the mouth/mask ROI so body can keep moving."""
+        alpha = self._prediction_smooth
+        if alpha <= 1e-6:
+            return frame
+
+        import cv2
+
+        current = np.asarray(frame.data)
+        if current.ndim != 3:
+            return frame
+
+        prev = state.extra.get("composed_smooth_prev")
+        crop_infos = state.extra.get("crop_infos")
+        prepared_mask_coords = state.extra.get("prepared_mask_coords")
+        prepared_masks = state.extra.get("face_masks")
+        avatar_frame_idx = resolve_avatar_frame_index(state, frame_idx)
+
+        if (
+            not isinstance(prev, np.ndarray)
+            or prev.shape != current.shape
+            or not isinstance(crop_infos, list)
+            or not crop_infos
+        ):
+            state.extra["composed_smooth_prev"] = current.copy()
+            return frame
+
+        out = current.copy()
+        if (
+            isinstance(prepared_mask_coords, list)
+            and prepared_mask_coords
+            and isinstance(prepared_masks, list)
+            and prepared_masks
+        ):
+            mx1, my1, mx2, my2 = (
+                int(v)
+                for v in prepared_mask_coords[avatar_frame_idx % len(prepared_mask_coords)]
+            )
+            mx1 = max(0, mx1)
+            my1 = max(0, my1)
+            mx2 = min(out.shape[1], mx2)
+            my2 = min(out.shape[0], my2)
+            if mx2 > mx1 and my2 > my1:
+                mask = prepared_masks[avatar_frame_idx % len(prepared_masks)]
+                if mask.ndim == 3:
+                    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+                if mask.shape[:2] != (my2 - my1, mx2 - mx1):
+                    mask = cv2.resize(
+                        mask,
+                        (mx2 - mx1, my2 - my1),
+                        interpolation=cv2.INTER_LINEAR,
+                    )
+                mask_f = (mask.astype(np.float32) / 255.0)[:, :, np.newaxis]
+                cur_roi = out[my1:my2, mx1:mx2].astype(np.float32)
+                prev_roi = prev[my1:my2, mx1:mx2].astype(np.float32)
+                blended = prev_roi * alpha + cur_roi * (1.0 - alpha)
+                out[my1:my2, mx1:mx2] = (
+                    cur_roi * (1.0 - mask_f) + blended * mask_f
+                ).astype(np.uint8)
+        else:
+            ci = crop_infos[avatar_frame_idx % len(crop_infos)]
+            x1, y1, x2, y2 = int(ci.x1), int(ci.y1), int(ci.x2), int(ci.y2)
+            x1 = max(0, x1)
+            y1 = max(0, y1)
+            x2 = min(out.shape[1], x2)
+            y2 = min(out.shape[0], y2)
+            if x2 > x1 and y2 > y1:
+                cur_roi = out[y1:y2, x1:x2].astype(np.float32)
+                prev_roi = prev[y1:y2, x1:x2].astype(np.float32)
+                out[y1:y2, x1:x2] = (prev_roi * alpha + cur_roi * (1.0 - alpha)).astype(
+                    np.uint8
+                )
+
+        state.extra["composed_smooth_prev"] = out.copy()
+        return VideoFrameData(
+            data=out,
+            width=out.shape[1],
+            height=out.shape[0],
+            timestamp_ms=frame.timestamp_ms,
+        )
 
     def _blend_prediction_toward_closed_mouth(
         self,

@@ -1072,6 +1072,16 @@ class FlashTalkRunner:
                 len(self._idle_frames),
             )
 
+        if self.model_type == "musetalk":
+            idle_frames = self._load_musetalk_idle_frames()
+            if idle_frames:
+                self._set_idle_frames(idle_frames, playback_mode="pingpong")
+                log.info(
+                    "Loaded MuseTalk prepared frames for idle playback: avatar=%s frames=%d",
+                    self.avatar_id,
+                    len(idle_frames),
+                )
+
         # Start idle loop after init; it replays local cached frames when WebRTC is live.
         if self._idle_task is None:
             self._idle_task = asyncio.create_task(self._idle_loop())
@@ -1432,6 +1442,46 @@ class FlashTalkRunner:
 
     def _build_fasterliveportrait_idle_frames(self, reference_frame: np.ndarray) -> list[np.ndarray]:
         return [np.ascontiguousarray(reference_frame)]
+
+    def _load_musetalk_idle_frames(self) -> list[np.ndarray] | None:
+        """Cycle prepared/full_imgs (LiveTalking-style) while MuseTalk is idle."""
+        avatar_dir = self.avatar_path()
+        candidates = (
+            avatar_dir / "prepared" / "full_imgs",
+            avatar_dir / "full_imgs",
+            avatar_dir / "frames",
+        )
+        frame_dir = next((path for path in candidates if path.is_dir()), None)
+        if frame_dir is None:
+            return None
+
+        frame_paths = sorted(
+            path
+            for path in frame_dir.iterdir()
+            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+        )
+        max_frames = max(0, _env_int("OPENTALKING_MUSETALK_IDLE_MAX_FRAMES", 0))
+        if max_frames > 0:
+            frame_paths = frame_paths[:max_frames]
+        if not frame_paths:
+            return None
+
+        from PIL import Image
+        from opentalking.media.frame_avatar import resize_reference_image_to_video
+
+        target_w = int(getattr(self.flashtalk, "width", 0) or 0)
+        target_h = int(getattr(self.flashtalk, "height", 0) or 0)
+        frames: list[np.ndarray] = []
+        for path in frame_paths:
+            try:
+                pil_img = Image.open(path).convert("RGB")
+                pil_img = resize_reference_image_to_video(pil_img, width=target_w, height=target_h)
+                img = np.asarray(pil_img)
+                frames.append(np.ascontiguousarray(img[:, :, ::-1]))
+            except Exception:
+                log.warning("Skipping unreadable MuseTalk idle frame: %s", path, exc_info=True)
+                continue
+        return frames or None
 
     def _set_idle_frames(self, frames: list[np.ndarray], *, playback_mode: str | None = None) -> None:
         self._idle_frames = frames

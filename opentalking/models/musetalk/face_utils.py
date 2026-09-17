@@ -464,7 +464,11 @@ def paste_face_back_with_prepared_mask(
     mask: np.ndarray,
     mask_crop_box: tuple[int, int, int, int],
 ) -> np.ndarray:
-    """Blend a generated face crop back using prepared assets without crushing motion."""
+    """Blend a generated face crop using prepared masks (LiveTalking-compatible).
+
+    LiveTalking uses full-strength prepared jaw masks via blendLinear. Softening
+    the mask (focus * 0.85) lets the original mouth show through as a double-lip.
+    """
     import cv2
 
     out = full_frame.copy()
@@ -496,43 +500,19 @@ def paste_face_back_with_prepared_mask(
 
     composed_roi[dy1:dy2, dx1:dx2] = resized_face[:src_h, :src_w]
 
+    if mask.ndim == 3:
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
     if mask.shape[:2] != roi.shape[:2]:
         mask = cv2.resize(mask, (roi.shape[1], roi.shape[0]), interpolation=cv2.INTER_LINEAR)
 
-    raw_mask = mask.astype(np.uint8, copy=False)
-    prep_mask = cv2.GaussianBlur(raw_mask, (0, 0), 3)
-    kernel_size = max(9, int(round(min(roi.shape[0], roi.shape[1]) * 0.08)) | 1)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-    prep_mask = cv2.dilate(prep_mask, kernel, iterations=1)
-    prep_mask_f = prep_mask.astype(np.float32) / 255.0
-    prep_mask_f = np.clip((prep_mask_f - 0.08) / 0.92, 0.0, 1.0)
-
-    local_alpha = np.zeros((roi.shape[0], roi.shape[1]), dtype=np.float32)
-    yy, xx = np.ogrid[:crop_h, :crop_w]
-    cx = crop_w * 0.5
-    cy = crop_h * 0.66
-    rx = max(8.0, crop_w * 0.34)
-    ry = max(8.0, crop_h * 0.24)
-    ellipse = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
-    inner = np.clip(1.0 - ellipse, 0.0, 1.0)
-    inner = cv2.GaussianBlur((inner * 255.0).astype(np.uint8), (0, 0), 9).astype(np.float32) / 255.0
-    local_alpha[dy1:dy2, dx1:dx2] = inner[:src_h, :src_w]
-
-    focus = np.zeros((roi.shape[0], roi.shape[1]), dtype=np.float32)
-    yy_focus = np.linspace(0.0, 1.0, crop_h, dtype=np.float32)[:, None]
-    focus_crop = np.clip((yy_focus - 0.34) / 0.34, 0.0, 1.0)
-    focus_crop = focus_crop * focus_crop * (3.0 - 2.0 * focus_crop)
-    focus[dy1:dy2, dx1:dx2] = focus_crop[:src_h, :1]
-
-    prep_mask_f = prep_mask_f * focus
-    local_alpha = local_alpha * focus
-    alpha = np.maximum(prep_mask_f * 0.85, local_alpha)
-    alpha = np.clip(alpha, 0.0, 1.0)
-    if alpha.ndim == 2:
-        alpha = alpha[:, :, np.newaxis]
-
-    blended = composed_roi.astype(np.float32) * alpha + roi.astype(np.float32) * (1.0 - alpha)
-    out[my1:my2, mx1:mx2] = blended.astype(np.uint8)
+    # Match LiveTalking get_image_blending: use prepared mask at full strength.
+    mask_f = mask.astype(np.float32) / 255.0
+    mask_f = cv2.GaussianBlur(mask_f, (0, 0), 1.0)
+    mask_f = np.clip(mask_f, 0.0, 1.0)[:, :, np.newaxis]
+    blended = composed_roi.astype(np.float32) * mask_f + roi.astype(np.float32) * (
+        1.0 - mask_f
+    )
+    out[my1:my2, mx1:mx2] = np.clip(blended, 0.0, 255.0).astype(np.uint8)
     return out
 
 

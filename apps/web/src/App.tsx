@@ -3042,10 +3042,20 @@ export default function App() {
         className={
           immersiveActive
             ? "fixed inset-0 z-40 flex min-h-0 flex-col bg-slate-950"
-            : "flex min-h-0 flex-col lg:h-[calc(100vh-3.5rem)] lg:flex-row"
+            : showStart
+              ? "flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-3.5rem)] lg:flex-row"
+              : "flex min-h-0 flex-col lg:h-[calc(100vh-3.5rem)] lg:flex-row"
         }
       >
-        <div className={`${immersiveActive ? "hidden" : "order-2 min-h-0 lg:order-none lg:h-full lg:shrink-0"}`}>
+        <div
+          className={
+            immersiveActive
+              ? "hidden"
+              : showStart
+                ? "hidden lg:block lg:h-full lg:shrink-0"
+                : "order-2 min-h-0 lg:order-none lg:h-full lg:shrink-0"
+          }
+        >
           <SettingsPanel
             expanded={settingsExpanded}
             onExpandedChange={setSettingsExpanded}
@@ -3116,14 +3126,18 @@ export default function App() {
             className={
               immersiveActive
                 ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
-                : "flex min-h-0 flex-1 flex-col p-4"
+                : showStart
+                  ? "flex min-h-0 flex-1 flex-col p-0 lg:p-4"
+                  : "flex min-h-0 flex-1 flex-col p-4"
             }
           >
             <div
               className={
                 immersiveActive
                   ? "absolute inset-0 overflow-hidden bg-black"
-                  : "relative min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 lg:min-h-[420px]"
+                  : showStart
+                    ? "relative min-h-0 flex-1 overflow-hidden bg-white lg:min-h-[420px] lg:rounded-lg lg:border lg:border-slate-200 lg:shadow-sm lg:shadow-slate-200/70"
+                    : "relative min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 lg:min-h-[420px]"
               }
             >
               <SceneStage
@@ -3313,9 +3327,13 @@ export default function App() {
           className={
             immersiveActive
               ? "hidden"
-              : `order-3 min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:shrink-0 ${
-                  sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
-                }`
+              : showStart
+                ? `hidden min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:flex lg:shrink-0 ${
+                    sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
+                  }`
+                : `order-3 min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:shrink-0 ${
+                    sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
+                  }`
           }
         >
           <div className="flex h-full min-h-0">

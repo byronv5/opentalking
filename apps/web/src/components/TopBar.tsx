@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from "react";
 import type { ConnectionStatus } from "../types";
 
 const DOT_COLORS: Record<ConnectionStatus, string> = {
@@ -31,6 +32,15 @@ export type FlashtalkRecordPhase = "idle" | "recording" | "stopped";
 export type StudioWorkflow = "realtime" | "videoCreation" | "videoClone" | "assetLibrary" | "streaming" | "runtimeConfig";
 export type ConversationViewMode = "studio" | "immersive";
 
+const WORKFLOW_ITEMS: Array<[StudioWorkflow | "monitor", string]> = [
+  ["realtime", "实时对话"],
+  ["videoCreation", "视频创作"],
+  ["videoClone", "视频克隆"],
+  ["assetLibrary", "资产库"],
+  ["streaming", "流媒体"],
+  ["monitor", "运行监控"],
+];
+
 interface TopBarProps {
   connection: ConnectionStatus;
   workflow?: StudioWorkflow;
@@ -48,6 +58,11 @@ interface TopBarProps {
   onFlashtalkRecordStop?: () => void;
   onFlashtalkRecordSave?: () => void;
   onWorkflowChange?: (workflow: StudioWorkflow) => void;
+}
+
+function workflowLabel(workflow: StudioWorkflow): string {
+  return WORKFLOW_ITEMS.find(([id]) => id === workflow)?.[1]
+    ?? (workflow === "runtimeConfig" ? "API配置" : "工作台");
 }
 
 export function TopBar({
@@ -69,13 +84,50 @@ export function TopBar({
   onWorkflowChange,
 }: TopBarProps) {
   const busy = flashtalkRecordBusy || recordingSaving;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [workflow, immersiveChrome]);
+
+  const selectWorkflow = (id: StudioWorkflow | "monitor") => {
+    if (id === "monitor") {
+      onInactiveModuleClick?.("运行监控");
+      setMenuOpen(false);
+      return;
+    }
+    onWorkflowChange?.(id);
+    setMenuOpen(false);
+  };
 
   return (
     <header
       className={
         immersiveChrome
-          ? "group fixed inset-x-0 top-0 z-50 flex h-14 -translate-y-12 items-center justify-between border-b border-white/10 bg-white/92 px-4 shadow-lg shadow-slate-950/10 backdrop-blur transition-transform duration-200 hover:translate-y-0"
-          : "flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm"
+          ? "group fixed inset-x-0 top-0 z-50 flex h-14 -translate-y-12 items-center justify-between border-b border-white/10 bg-white/92 px-3 shadow-lg shadow-slate-950/10 backdrop-blur transition-transform duration-200 hover:translate-y-0 sm:px-4"
+          : "flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4"
       }
     >
       {immersiveChrome ? (
@@ -83,7 +135,63 @@ export function TopBar({
           <div className="h-1.5 w-16 rounded-full bg-white/80 shadow-sm" />
         </div>
       ) : null}
-      <div className="flex min-w-0 items-center gap-3">
+
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        {!immersiveChrome ? (
+          <div className="relative md:hidden" ref={menuRef}>
+            <button
+              type="button"
+              aria-label="打开工作台菜单"
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-cyan-200 hover:text-cyan-700"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+                {menuOpen ? (
+                  <path d="M6.7 6.7a1 1 0 0 1 1.4 0L12 10.6l3.9-3.9a1 1 0 1 1 1.4 1.4L13.4 12l3.9 3.9a1 1 0 0 1-1.4 1.4L12 13.4l-3.9 3.9a1 1 0 0 1-1.4-1.4L10.6 12 6.7 8.1a1 1 0 0 1 0-1.4Z" />
+                ) : (
+                  <path d="M4 7h16a1 1 0 1 0 0-2H4a1 1 0 1 0 0 2Zm0 6h16a1 1 0 1 0 0-2H4a1 1 0 1 0 0 2Zm0 6h16a1 1 0 1 0 0-2H4a1 1 0 1 0 0 2Z" />
+                )}
+              </svg>
+            </button>
+            {menuOpen ? (
+              <div
+                id={menuId}
+                className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-[min(calc(100vw-1.5rem),18rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-300/50"
+                role="menu"
+                aria-label="工作台模块"
+              >
+                <div className="border-b border-slate-100 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-slate-500">当前模块</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold text-slate-950">{workflowLabel(workflow)}</p>
+                </div>
+                <div className="p-1.5">
+                  {WORKFLOW_ITEMS.map(([id, label]) => {
+                    const active = id !== "monitor" && workflow === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => selectWorkflow(id)}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${
+                          active
+                            ? "bg-cyan-50 text-cyan-700"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{label}</span>
+                        {active ? <span className="text-[11px] font-semibold text-cyan-600">使用中</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-cyan-300">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
             <path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Zm6 12 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" />
@@ -91,7 +199,7 @@ export function TopBar({
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-950">
-            <span className="sm:hidden">OpenTalking</span>
+            <span className="sm:hidden">{workflowLabel(workflow)}</span>
             <span className="hidden sm:inline">OpenTalking Studio</span>
           </p>
           <p className="hidden truncate text-xs text-slate-500 sm:block">实时数字人工作台</p>
@@ -106,19 +214,26 @@ export function TopBar({
         }
         aria-label="工作台模块"
       >
-        {[
-          ["realtime", "实时对话"],
-          ["videoCreation", "视频创作"],
-          ["videoClone", "视频克隆"],
-          ["assetLibrary", "资产库"],
-          ["streaming", "流媒体"],
-        ].map(([id, label]) => {
+        {WORKFLOW_ITEMS.map(([id, label]) => {
+          if (id === "monitor") {
+            return (
+              <button
+                key={id}
+                type="button"
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-white/70 hover:text-slate-700"
+                title="运行监控规划中"
+                onClick={() => onInactiveModuleClick?.("运行监控")}
+              >
+                {label}
+              </button>
+            );
+          }
           const active = workflow === id;
           return (
             <button
               key={id}
               type="button"
-              onClick={() => onWorkflowChange?.(id as StudioWorkflow)}
+              onClick={() => onWorkflowChange?.(id)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? "bg-white text-cyan-700 shadow-sm"
@@ -129,29 +244,9 @@ export function TopBar({
             </button>
           );
         })}
-        <button
-          type="button"
-          className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-white/70 hover:text-slate-700"
-          title="运行监控规划中"
-          onClick={() => onInactiveModuleClick?.("运行监控")}
-        >
-          运行监控
-        </button>
       </nav>
 
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-        <button
-          type="button"
-          onClick={() => onWorkflowChange?.("streaming")}
-          className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition md:hidden ${
-            workflow === "streaming"
-              ? "border-cyan-200 bg-cyan-50 text-cyan-700"
-              : "border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700"
-          }`}
-          aria-label="打开流媒体工作流"
-        >
-          流媒体
-        </button>
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-2">
         {workflow === "realtime" ? (
           <div className="hidden rounded-lg bg-slate-100 p-1 sm:flex" aria-label="实时对话视图">
             {[
@@ -186,7 +281,7 @@ export function TopBar({
                 className="rounded-lg bg-cyan-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-45 sm:px-3 sm:text-xs"
                 title="从此时起录制浏览器中的数字人画面、用户麦克风和可用的远端音轨"
               >
-                {busy ? "请稍候..." : "开始录制"}
+                {busy ? "请稍候..." : "录制"}
               </button>
             ) : null}
             {flashtalkRecordPhase === "recording" ? (
@@ -201,7 +296,7 @@ export function TopBar({
                   className="rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45 sm:px-3 sm:text-xs"
                   title="停止浏览器录制；停止后会自动保存到导出视频资产库"
                 >
-                  {busy ? "请稍候..." : "结束录制"}
+                  {busy ? "请稍候..." : "结束"}
                 </button>
               </>
             ) : null}
@@ -214,7 +309,7 @@ export function TopBar({
                   className="rounded-lg bg-slate-950 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45 sm:px-3 sm:text-xs"
                   title="重试保存上一次未上传成功的浏览器录制"
                 >
-                  {recordingSaving ? "导出中..." : "重试保存"}
+                  {recordingSaving ? "导出中..." : "重试"}
                 </button>
                 <button
                   type="button"
@@ -223,7 +318,7 @@ export function TopBar({
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 sm:px-3 sm:text-xs"
                   title="开始新一轮浏览器录制"
                 >
-                  重新录制
+                  重录
                 </button>
               </>
             ) : null}
@@ -232,7 +327,7 @@ export function TopBar({
         <button
           type="button"
           onClick={() => onWorkflowChange?.("runtimeConfig")}
-          className={`h-8 rounded-lg border px-3 text-xs font-semibold transition ${
+          className={`h-8 shrink-0 rounded-lg border px-2 text-[11px] font-semibold transition sm:px-3 sm:text-xs ${
             workflow === "runtimeConfig"
               ? "border-cyan-200 bg-cyan-50 text-cyan-700 shadow-sm"
               : runtimeConfigReady
@@ -241,10 +336,11 @@ export function TopBar({
           }`}
           title={runtimeConfigLoading ? "API 配置读取中" : runtimeConfigReady ? "API 配置已配置" : "API 配置未配置"}
         >
-          {runtimeConfigReady ? "API配置（已配置）" : "API配置（未配置）"}
+          <span className="sm:hidden">{runtimeConfigReady ? "API·已配" : "API·未配"}</span>
+          <span className="hidden sm:inline">{runtimeConfigReady ? "API配置（已配置）" : "API配置（未配置）"}</span>
         </button>
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium sm:px-2.5 ${PILL_COLORS[connection]}`}
+          className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium sm:px-2.5 sm:text-xs ${PILL_COLORS[connection]}`}
           title={DOT_LABELS[connection]}
         >
           <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${DOT_COLORS[connection]}`} />

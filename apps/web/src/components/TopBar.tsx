@@ -247,20 +247,20 @@ export function TopBar({
       </nav>
 
       <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-2">
-        {workflow === "realtime" ? (
-          <div className="hidden rounded-lg bg-slate-100 p-1 sm:flex" aria-label="实时对话视图">
-            {[
+        {workflow === "realtime" && !immersiveChrome && (connection === "live" || connection === "expiring") ? (
+          <div className="flex rounded-lg bg-slate-100 p-0.5" aria-label="实时对话视图">
+            {([
               ["studio", "工作台"],
               ["immersive", "沉浸"],
-            ].map(([id, label]) => (
+            ] as const).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
                 onClick={(event) => {
                   event.currentTarget.blur();
-                  onConversationViewModeChange?.(id as ConversationViewMode);
+                  onConversationViewModeChange?.(id);
                 }}
-                className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${
+                className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:text-xs ${
                   conversationViewMode === id
                     ? "bg-white text-cyan-700 shadow-sm"
                     : "text-slate-500 hover:bg-white/70 hover:text-slate-700"

@@ -2302,6 +2302,7 @@ export default function App() {
       setActiveAsrProvider(lockedAsrProvider);
       videoRef.current!.muted = false;
       setConnection("live");
+      setSettingsExpanded(false);
       await apiPost(`/sessions/${created.session_id}/start`, {});
       notify("会话已连接，可以开始文本、语音或音频驱动。", "success");
     } catch (error) {
@@ -2865,6 +2866,7 @@ export default function App() {
   const sessionConfigLocked = connection === "connecting" || connection === "queued" || connection === "live" || connection === "expiring";
   const effectiveAsrProvider = activeAsrProvider || normalizeAsrProvider(asrProvider, "dashscope");
   const showStart = connection === "idle" || connection === "error" || connection === "connecting" || connection === "queued";
+  const sessionLive = connection === "live" || connection === "expiring";
   const effectiveConversationViewMode = showStart ? "studio" : conversationViewMode;
   const immersiveActive = workflow === "realtime" && effectiveConversationViewMode === "immersive";
   const chatMaxVisible = readChatMaxVisible();
@@ -3042,23 +3044,42 @@ export default function App() {
         className={
           immersiveActive
             ? "fixed inset-0 z-40 flex min-h-0 flex-col bg-slate-950"
-            : showStart
-              ? "flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-3.5rem)] lg:flex-row"
-              : "flex min-h-0 flex-col lg:h-[calc(100vh-3.5rem)] lg:flex-row"
+            : "flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-3.5rem)] lg:flex-row"
         }
       >
         <div
           className={
             immersiveActive
               ? "hidden"
-              : showStart
-                ? "hidden lg:block lg:h-full lg:shrink-0"
-                : "order-2 min-h-0 lg:order-none lg:h-full lg:shrink-0"
+              : settingsExpanded && !showStart
+                ? "fixed inset-0 z-[60] flex items-end lg:static lg:z-auto lg:block lg:h-full lg:shrink-0 lg:items-stretch"
+                : "hidden lg:block lg:h-full lg:shrink-0"
           }
         >
-          <SettingsPanel
-            expanded={settingsExpanded}
-            onExpandedChange={setSettingsExpanded}
+          {settingsExpanded && !showStart ? (
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default bg-slate-900/35 lg:hidden"
+              aria-label="关闭配置面板"
+              onClick={() => setSettingsExpanded(false)}
+            />
+          ) : null}
+          <div className="relative z-10 max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl border border-slate-200 bg-slate-50 shadow-2xl lg:max-h-none lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none">
+            {settingsExpanded && !showStart ? (
+              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 lg:hidden">
+                <p className="text-sm font-semibold text-slate-900">数字人配置</p>
+                <button
+                  type="button"
+                  onClick={() => setSettingsExpanded(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
+                >
+                  关闭
+                </button>
+              </div>
+            ) : null}
+            <SettingsPanel
+              expanded={settingsExpanded}
+              onExpandedChange={setSettingsExpanded}
             avatars={avatars}
             models={models}
             modelStatuses={modelStatuses}
@@ -3113,13 +3134,14 @@ export default function App() {
             onManageMemoryLibraries={() => void handleManageMemoryLibraries()}
             onOpenVoiceClone={() => setVoiceCloneOpen(true)}
           />
+          </div>
         </div>
 
         <main
           className={
             immersiveActive
               ? "order-1 flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-950 lg:order-none"
-              : "order-1 flex min-h-0 flex-1 flex-col bg-slate-100 lg:order-none"
+              : "order-1 flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-100 lg:order-none"
           }
         >
           <div
@@ -3128,16 +3150,14 @@ export default function App() {
                 ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
                 : showStart
                   ? "flex min-h-0 flex-1 flex-col p-0 lg:p-4"
-                  : "flex min-h-0 flex-1 flex-col p-4"
+                  : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
             }
           >
             <div
               className={
                 immersiveActive
                   ? "absolute inset-0 overflow-hidden bg-black"
-                  : showStart
-                    ? "relative min-h-0 flex-1 overflow-hidden bg-white lg:min-h-[420px] lg:rounded-lg lg:border lg:border-slate-200 lg:shadow-sm lg:shadow-slate-200/70"
-                    : "relative min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 lg:min-h-[420px]"
+                  : "relative min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70"
               }
             >
               <SceneStage
@@ -3151,7 +3171,7 @@ export default function App() {
                 compactSquareStage={compactSquareStage}
                 immersiveFill={immersiveActive}
                 clientRenderer={!showStart && model === "mock" ? currentAvatar?.client_renderer ?? null : null}
-                className="h-full w-full"
+                className="absolute inset-0 h-full w-full"
               >
                 {immersiveActive ? (
                   <>
@@ -3228,9 +3248,9 @@ export default function App() {
                     </div>
                   </>
                 ) : (
-                  <div className="absolute left-4 right-4 top-4 z-30 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="absolute left-3 right-3 top-3 z-30 flex flex-col gap-2 sm:left-4 sm:right-4 sm:top-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
                         <span className={`h-1.5 w-1.5 rounded-full ${
                           connection === "live" || connection === "expiring" ? "bg-emerald-500" : "bg-slate-400"
                         }`} />
@@ -3239,10 +3259,10 @@ export default function App() {
                       <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 shadow-sm">
                         WebRTC 舞台
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm">
+                      <span className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm sm:inline-flex">
                         {modelLabel(model)}
                       </span>
-                      <span className="inline-flex max-w-[14rem] items-center gap-1 truncate rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm">
+                      <span className="inline-flex max-w-[10rem] items-center gap-1 truncate rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm sm:max-w-[14rem]">
                         {currentAvatar?.name ?? currentAvatar?.id ?? "未选形象"}
                       </span>
                     </div>
@@ -3285,12 +3305,12 @@ export default function App() {
               ) : null}
             </div>
 
-            {connection === "live" || connection === "expiring" ? (
+            {sessionLive ? (
             <div
               className={
                 immersiveActive
                   ? "group absolute inset-x-3 bottom-0 z-30 mx-auto max-w-4xl translate-y-[calc(100%-1.25rem)] pb-3 transition-transform duration-200 hover:translate-y-0 focus-within:translate-y-0 sm:pb-5"
-                  : "mt-4"
+                  : "mt-3 shrink-0 pb-[max(0px,env(safe-area-inset-bottom))] sm:mt-4"
               }
             >
               {immersiveActive ? (
@@ -3327,13 +3347,9 @@ export default function App() {
           className={
             immersiveActive
               ? "hidden"
-              : showStart
-                ? `hidden min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:flex lg:shrink-0 ${
-                    sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
-                  }`
-                : `order-3 min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:shrink-0 ${
-                    sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
-                  }`
+              : `hidden min-h-0 overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 lg:flex lg:shrink-0 ${
+                  sessionPanelCollapsed ? "lg:w-12" : "lg:w-[360px]"
+                }`
           }
         >
           <div className="flex h-full min-h-0">

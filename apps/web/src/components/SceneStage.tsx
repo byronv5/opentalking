@@ -119,14 +119,24 @@ export function SceneStage({
         {hasSceneBackground ? <div className="absolute inset-0 bg-slate-950/10" /> : null}
       </div>
 
-      <div className={`absolute inset-0 flex ${immersiveFill ? "p-0" : "p-4 sm:p-6 lg:p-8"} ${avatarAnchorClass}`}>
+      <div
+        className={
+          compactSquareStage && !immersiveFill
+            ? `absolute inset-0 flex ${immersiveFill ? "p-0" : "p-4 sm:p-6 lg:p-8"} ${avatarAnchorClass}`
+            : `absolute inset-0 ${immersiveFill ? "p-0" : "p-4 sm:p-6 lg:p-8"}`
+        }
+      >
         <div
           className={
             compactSquareStage && !immersiveFill
               ? "relative aspect-square w-full max-w-[42rem] max-h-full"
-              : "relative h-full w-full"
+              : "relative h-full w-full min-h-0 min-w-0"
           }
-          style={{ transform: avatarTransform, transformOrigin: avatarTransformOrigin }}
+          style={
+            avatarAdjust || sceneAvatarScale !== 1
+              ? { transform: avatarTransform, transformOrigin: avatarTransformOrigin }
+              : undefined
+          }
         >
           <VideoBackground
             ref={videoRef}

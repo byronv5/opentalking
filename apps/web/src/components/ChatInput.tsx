@@ -713,13 +713,13 @@ export function ChatInput({
           </p>
         ) : onOpenSettings ? (
           <p className="text-center text-[10px] text-slate-500 lg:hidden">
-            TTS · 数字人选项在下方配置区，
+            TTS · 数字人选项，
             <button
               type="button"
               className="underline decoration-slate-300 underline-offset-2 hover:text-slate-800"
               onClick={() => onOpenSettings()}
             >
-              点击定位
+              点击打开配置
             </button>
           </p>
         ) : null}
